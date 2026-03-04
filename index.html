@@ -2,89 +2,80 @@
 <html>
 <head>
   <meta charset="UTF-8" />
-  <title>Mapbox</title>
+  <title>Mapbox Tracking</title>
 
   <!-- MAPBOX CSS -->
   <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet" />
 
   <style>
-   body { 
-  margin: 0; 
-  padding: 0; 
-  font-family: 'Segoe UI', sans-serif;
-  overflow: hidden;
-  background: #0f172a;
-}
+    body { 
+      margin: 0; 
+      padding: 0; 
+      font-family: 'Segoe UI', sans-serif;
+      overflow: hidden;
+      background: #0f172a;
+    }
 
-#map { 
-  width: 100%; 
-  height: 100vh; 
-}
+    #map { 
+      width: 100%; 
+      height: 100vh; 
+    }
 
-/* Panel lateral futurista */
-#info {
-  position: absolute;
-  top: 0;
-  right: 0;
-  height: 100vh;
-  width: 320px;
-  color: white;
-  padding: 30px 25px;
-  z-index: 1;
-  box-shadow: -5px 0 30px rgb(34, 36, 36);
-  border-left: 2px solid rgb(16, 20, 20);
-}
+    /* Panel lateral */
+    #info {
+      position: absolute;
+      top: 0;
+      right: 0;
+      height: 100vh;
+      width: 320px;
+      color: white;
+      padding: 30px 25px;
+      z-index: 1;
+      background: #111827;
+      box-shadow: -5px 0 30px rgb(0,0,0);
+      border-left: 2px solid #1f2937;
+    }
 
+    #info h3 {
+      text-align: center;
+      font-size: 22px;
+      margin-bottom: 30px;
+      color: #00f5ff;
+      letter-spacing: 2px;
+    }
 
-/* Título */
-#info h3 {
-  text-align: center;
-  font-size: 22px;
-  margin-bottom: 30px;
-  color: #1c2222;
-  letter-spacing: 2px;
-}
+    .info-card {
+      background: #1f2937;
+      border-radius: 15px;
+      padding: 15px;
+      margin-bottom: 18px;
+      border: 1px solid #374151;
+    }
 
-/* Tarjetas de datos */
-.info-card {
-  background: rgb(19, 17, 17);
-  border-radius: 15px;
-  padding: 15px;
-  margin-bottom: 18px;
-  backdrop-filter: blur(8px);
-  border: 1px solid rgb(21, 24, 24);
-}
+    .label {
+      font-size: 13px;
+      opacity: 0.7;
+    }
 
-.info-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 0 20px rgba(0,255,255);
-}
+    .value {
+      font-size: 18px;
+      font-weight: bold;
+      margin-top: 5px;
+      color: #00f5ff;
+    }
 
-.label {
-  font-size: 13px;
-  opacity: 0.7;
-}
-
-.value {
-  font-size: 18px;
-  font-weight: bold;
-  margin-top: 5px;
-  color: #00f5ff;
-}
-
-/* Indicador online */
-.status {
-  text-align: center;
-  margin-top: 20px;
-  font-size: 14px;
-  color: #00ff99;
-}
-
+    .status {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 14px;
+      color: #00ff99;
+    }
   </style>
 </head>
 <body>
 
 <div id="map"></div>
+
 <div id="info">
   <h3>📡 TRACKING EN VIVO</h3>
 
@@ -103,6 +94,7 @@
     <div class="value" id="hora">--</div>
   </div>
 
+  <div class="status">● CONECTADO</div>
 </div>
 
 <!-- MAPBOX JS -->
@@ -112,27 +104,30 @@
 
 // IMPORTAR FIREBASE
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
+import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-analytics.js";
 import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-database.js";
 
-// CONFIGURACIÓN FIREBASE
+// CONFIGURACIÓN FIREBASE (map-box-71f7f)
 const firebaseConfig = {
-  apiKey: "AIzaSyCV9fZDl26hfyPDSZd6Mxw7bBATHVYGB6Y",
-  authDomain: "programacionmovilmapbox.firebaseapp.com",
-  databaseURL: "https://programacionmovilmapbox-default-rtdb.firebaseio.com/",
-  projectId: "programacionmovilmapbox",
-  storageBucket: "programacionmovilmapbox.firebasestorage.app",
-  messagingSenderId: "951654593098",
-  appId: "1:951654593098:web:29b3b379e635e02e746cb3"
+  apiKey: "AIzaSyD0J6JwIBuC2kQYLDxKB0mNS64_PxkPK3I",
+  authDomain: "map-box-71f7f.firebaseapp.com",
+  databaseURL: "https://map-box-71f7f-default-rtdb.firebaseio.com/",
+  projectId: "map-box-71f7f",
+  storageBucket: "map-box-71f7f.firebasestorage.app",
+  messagingSenderId: "1054280885383",
+  appId: "1:1054280885383:web:a3ac23e0d0ea42e87fc422",
+  measurementId: "G-0XMCYPCGQN"
 };
 
-//INICIALIZAR FIREBASE
+// INICIALIZAR FIREBASE
 const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
 const database = getDatabase(app);
 
-//TOKEN MAPBOX
+// 🔥 TOKEN MAPBOX
 mapboxgl.accessToken = "pk.eyJ1IjoiY3Jpc3RoaWFubGFpbWUiLCJhIjoiY21tY2V2ZWM1MDVnMTJ3b2huMzlocHJ6ZCJ9.dBuZjZZF2_c7fQRxnsGteg";
 
-//CREAR MAPA
+// CREAR MAPA
 const map = new mapboxgl.Map({
   container: 'map',
   style: 'mapbox://styles/mapbox/streets-v12',
@@ -140,48 +135,46 @@ const map = new mapboxgl.Map({
   zoom: 15
 });
 
-// Crear elemento HTML personalizado
+// MARCADOR PERSONALIZADO
 const el = document.createElement('div');
 el.innerHTML = "🧍";
 el.style.fontSize = "40px";
 el.style.transform = "translate(-50%, -50%)";
 
-// Crear marcador con ese elemento
 const marker = new mapboxgl.Marker(el)
   .setLngLat([-68.15, -16.5])
   .addTo(map);
-// ELEMENTOS DEL INFO
+
+// ELEMENTOS DEL PANEL
 const latDiv = document.getElementById('latitud');
 const lngDiv = document.getElementById('longitud');
 const horaDiv = document.getElementById('hora');
 
-// ESCUCHAR FIREBASE
+// ESCUCHAR DATOS EN TIEMPO REAL
 const locationRef = ref(database, "ubicacion");
 
 onValue(locationRef, (snapshot) => {
   const data = snapshot.val();
 
   if (data && data.latitud && data.longitud && data.timestamp) {
+
     const nuevaPosicion = [data.longitud, data.latitud];
 
-    // Actualizar marcador
+    // Mover marcador
     marker.setLngLat(nuevaPosicion);
+
+    // Animar mapa
     map.flyTo({
       center: nuevaPosicion,
-      speed: 1.5
+      speed: 1.2
     });
 
-    // Mostrar latitud y longitud
-    latDiv.textContent = `Latitud: ${data.latitud.toFixed(6)}`;
-    lngDiv.textContent = `Longitud: ${data.longitud.toFixed(6)}`;
+    // Mostrar datos
+    latDiv.textContent = data.latitud.toFixed(6);
+    lngDiv.textContent = data.longitud.toFixed(6);
 
-    // Convertir timestamp a hora legible
     const date = new Date(data.timestamp);
-    const opciones = { 
-      year: 'numeric', month: '2-digit', day: '2-digit',
-      hour: '2-digit', minute: '2-digit', second: '2-digit'
-    };
-    horaDiv.textContent = `Hora: ${date.toLocaleString('es-BO', opciones)}`;
+    horaDiv.textContent = date.toLocaleString("es-BO");
   }
 });
 
