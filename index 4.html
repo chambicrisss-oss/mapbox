@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Mapbox Tracking + Geocercas</title>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet" />
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: Arial, sans-serif;
+      overflow: hidden;
+    }
+
+    #map { width: 100%; height: 100vh; }
+
+    /* ── Panel lateral ── */
+    #info {
+      position: absolute;
+      top: 0; right: 0;
+      height: 100vh;
+      width: 280px;
+      background: #ffffff;
+      border-left: 1px solid #ccc;
+      padding: 16px;
+      z-index: 10;
+      overflow-y: auto;
+      box-shadow: -2px 0 8px rgba(0,0,0,0.1);
+    }
+
+    #info h3 {
+      text-align: center;
+      font-size: 16px;
+      color: #333;
+      margin-bottom: 14px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #2563eb;
+    }
+
+    .info-card {
+      background: #f3f4f6;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      padding: 10px 12px;
+      margin-bottom: 10px;
+    }
+
+    .label {
+      font-size: 11px;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .value {
+      font-size: 15px;
+      font-weight: bold;
+      color: #1d4ed8;
+      margin-top: 3px;
+    }
+
+    .status {
+      text-align: center;
+      font-size: 12px;
+      color: #16a34a;
+      margin: 8px 0 14px;
+    }
+
+    /* ── Geocercas ── */
+    .section-title {
+      font-size: 12px;
+      font-weight: bold;
+      text-transform: uppercase;
+      color: #374151;
+      margin: 14px 0 8px;
+      padding-bottom: 5px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    #btn-draw {
+      width: 100%;
+      padding: 9px;
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    #btn-draw:hover { background: #1d4ed8; }
+    #btn-draw.active { background: #dc2626; }
+
+    #fence-list { margin-top: 10px; }
+
+    .fence-item {
+      display: flex;
+      align-items: center;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      padding: 7px 9px;
+      margin-bottom: 6px;
+      font-size: 12px;
+      color: #374151;
+    }
+
+    .fence-dot {
+      width: 10px; height: 10px;
+      border-radius: 2px;
+      margin-right: 8px;
+      flex-shrink: 0;
+    }
+
+    .fence-name { flex: 1; }
+
+    .fence-status {
+      font-size: 10px;
+      font-weight: bold;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .fence-status.inside  { background: #dcfce7; color: #15803d; }
+    .fence-status.outside { background: #f3f4f6; color: #9ca3af; }
+
+    .btn-delete {
+      background: none;
+      border: none;
+      color: #ef4444;
+      cursor: pointer;
+      font-size: 14px;
+      padding-left: 8px;
+    }
+
+    /* ── Alerta ── */
+    #alert-box {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-100px);
+      z-index: 100;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: bold;
+      color: white;
+      text-align: center;
+      pointer-events: none;
+      opacity: 0;
+      transition: transform .35s ease, opacity .35s ease;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    #alert-box.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+    #alert-box.enter { background: #16a34a; }
+    #alert-box.exit  { background: #dc2626; }
+
+    /* ── Hint de dibujo ── */
+    #draw-hint {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(255,255,255,0.95);
+      color: #374151;
+      border: 1px solid #d1d5db;
+      padding: 9px 20px;
+      border-radius: 6px;
+      font-size: 13px;
+      display: none;
+      z-index: 20;
+      pointer-events: none;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+  </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<div id="info">
+  <h3>📍 Tracking en Vivo</h3>
+
+  <div class="info-card">
+    <div class="label">Latitud</div>
+    <div class="value" id="latitud">--</div>
+  </div>
+  <div class="info-card">
+    <div class="label">Longitud</div>
+    <div class="value" id="longitud">--</div>
+  </div>
+  <div class="info-card">
+    <div class="label">Última actualización</div>
+    <div class="value" id="hora">--</div>
+  </div>
+
+  <div class="status">● Conectado</div>
+
+  <div class="section-title">🔲 Geocercas</div>
+  <button id="btn-draw">+ Dibujar geocerca</button>
+  <div id="fence-list"></div>
+</div>
+
+<div id="alert-box"></div>
+<div id="draw-hint">Clic y arrastra sobre el mapa para dibujar la geocerca</div>
+
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+
+<script type="module">
+import { initializeApp }  from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
+import { getAnalytics }   from "https://www.gstatic.com/firebasejs/12.10.0/firebase-analytics.js";
+import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyD0J6JwIBuC2kQYLDxKB0mNS64_PxkPK3I",
+  authDomain: "map-box-71f7f.firebaseapp.com",
+  databaseURL: "https://map-box-71f7f-default-rtdb.firebaseio.com/",
+  projectId: "map-box-71f7f",
+  storageBucket: "map-box-71f7f.firebasestorage.app",
+  messagingSenderId: "1054280885383",
+  appId: "1:1054280885383:web:a3ac23e0d0ea42e87fc422",
+  measurementId: "G-0XMCYPCGQN"
+};
+const app      = initializeApp(firebaseConfig);
+getAnalytics(app);
+const database = getDatabase(app);
+
+mapboxgl.accessToken = "pk.eyJ1IjoiY3Jpc3RoaWFubGFpbWUiLCJhIjoiY21tY2V2ZWM1MDVnMTJ3b2huMzlocHJ6ZCJ9.dBuZjZZF2_c7fQRxnsGteg";
+
+const map = new mapboxgl.Map({
+  container: 'map',
+  style: 'mapbox://styles/mapbox/streets-v12',
+  center: [-68.15, -16.5],
+  zoom: 15
+});
+
+const el = document.createElement('div');
+el.innerHTML = "🧍";
+el.style.cssText = "font-size:34px;transform:translate(-50%,-50%);";
+const marker = new mapboxgl.Marker(el).setLngLat([-68.15, -16.5]).addTo(map);
+
+let currentLngLat = [-68.15, -16.5];
+
+const COLORS = ['#2563eb','#dc2626','#16a34a','#d97706','#7c3aed','#0891b2'];
+let fences    = [];
+let fenceCount = 0;
+
+const latDiv    = document.getElementById('latitud');
+const lngDiv    = document.getElementById('longitud');
+const horaDiv   = document.getElementById('hora');
+const btnDraw   = document.getElementById('btn-draw');
+const fenceList = document.getElementById('fence-list');
+const alertBox  = document.getElementById('alert-box');
+const drawHint  = document.getElementById('draw-hint');
+
+let alertTimeout;
+function showAlert(msg, type) {
+  clearTimeout(alertTimeout);
+  alertBox.textContent = msg;
+  alertBox.className   = 'show ' + type;
+  alertTimeout = setTimeout(() => { alertBox.className = ''; }, 3500);
+}
+
+function renderFenceList() {
+  fenceList.innerHTML = '';
+  fences.forEach(f => {
+    const div = document.createElement('div');
+    div.className = 'fence-item';
+    div.id = 'fi-' + f.id;
+    div.innerHTML = `
+      <span class="fence-dot" style="background:${f.color}"></span>
+      <span class="fence-name">${f.name}</span>
+      <span class="fence-status ${f.inside ? 'inside' : 'outside'}">${f.inside ? '▲ Dentro' : '▼ Fuera'}</span>
+      <button class="btn-delete" data-id="${f.id}" title="Eliminar">✕</button>
+    `;
+    fenceList.appendChild(div);
+  });
+  document.querySelectorAll('.btn-delete').forEach(btn => {
+    btn.addEventListener('click', () => deleteFence(btn.dataset.id));
+  });
+}
+
+function updateFenceItem(f) {
+  const item = document.getElementById('fi-' + f.id);
+  if (!item) return;
+  const s = item.querySelector('.fence-status');
+  s.textContent = f.inside ? '▲ Dentro' : '▼ Fuera';
+  s.className   = 'fence-status ' + (f.inside ? 'inside' : 'outside');
+}
+
+let drawing = false;
+let drawStart = null;
+
+btnDraw.addEventListener('click', () => {
+  drawing = !drawing;
+  btnDraw.classList.toggle('active', drawing);
+  btnDraw.textContent = drawing ? '✕ Cancelar' : '+ Dibujar geocerca';
+  drawHint.style.display = drawing ? 'block' : 'none';
+  map.getCanvas().style.cursor = drawing ? 'crosshair' : '';
+});
+
+map.on('load', () => {
+  map.addSource('preview-src', { type:'geojson', data: emptyFC() });
+  map.addLayer({ id:'preview-fill', type:'fill', source:'preview-src', paint:{ 'fill-color':'#2563eb','fill-opacity':0.1 } });
+  map.addLayer({ id:'preview-line', type:'line', source:'preview-src', paint:{ 'line-color':'#2563eb','line-width':2,'line-dasharray':[4,2] } });
+});
+
+const canvas = map.getCanvasContainer();
+
+canvas.addEventListener('mousedown', e => {
+  if (!drawing) return;
+  e.preventDefault();
+  drawStart = { x: e.offsetX, y: e.offsetY };
+});
+canvas.addEventListener('mousemove', e => {
+  if (!drawing || !drawStart) return;
+  map.getSource('preview-src').setData(rectFeatureFromPixels(drawStart, { x: e.offsetX, y: e.offsetY }));
+});
+canvas.addEventListener('mouseup', e => {
+  if (!drawing || !drawStart) return;
+  const end = { x: e.offsetX, y: e.offsetY };
+  if (Math.abs(end.x - drawStart.x) > 20 && Math.abs(end.y - drawStart.y) > 20) addFenceFromPixels(drawStart, end);
+  drawStart = null;
+  map.getSource('preview-src').setData(emptyFC());
+  drawing = false;
+  btnDraw.classList.remove('active');
+  btnDraw.textContent = '+ Dibujar geocerca';
+  drawHint.style.display = 'none';
+  map.getCanvas().style.cursor = '';
+});
+
+canvas.addEventListener('touchstart', e => {
+  if (!drawing) return;
+  const t = e.touches[0], r = canvas.getBoundingClientRect();
+  drawStart = { x: t.clientX - r.left, y: t.clientY - r.top };
+  e.preventDefault();
+}, { passive: false });
+canvas.addEventListener('touchmove', e => {
+  if (!drawing || !drawStart) return;
+  const t = e.touches[0], r = canvas.getBoundingClientRect();
+  map.getSource('preview-src').setData(rectFeatureFromPixels(drawStart, { x: t.clientX-r.left, y: t.clientY-r.top }));
+  e.preventDefault();
+}, { passive: false });
+canvas.addEventListener('touchend', e => {
+  if (!drawing || !drawStart) return;
+  const t = e.changedTouches[0], r = canvas.getBoundingClientRect();
+  const end = { x: t.clientX-r.left, y: t.clientY-r.top };
+  if (Math.abs(end.x-drawStart.x) > 20 && Math.abs(end.y-drawStart.y) > 20) addFenceFromPixels(drawStart, end);
+  drawStart = null;
+  map.getSource('preview-src').setData(emptyFC());
+  drawing = false;
+  btnDraw.classList.remove('active');
+  btnDraw.textContent = '+ Dibujar geocerca';
+  drawHint.style.display = 'none';
+  map.getCanvas().style.cursor = '';
+  e.preventDefault();
+}, { passive: false });
+
+function pixToLngLat(px) { return map.unproject([px.x, px.y]); }
+
+function rectFeatureFromPixels(a, b) {
+  const ll1 = pixToLngLat(a), ll2 = pixToLngLat(b);
+  return rectFeature(ll1.lng, ll1.lat, ll2.lng, ll2.lat);
+}
+
+function rectFeature(lng1, lat1, lng2, lat2) {
+  const minLng = Math.min(lng1,lng2), maxLng = Math.max(lng1,lng2);
+  const minLat = Math.min(lat1,lat2), maxLat = Math.max(lat1,lat2);
+  return {
+    type:'FeatureCollection',
+    features:[{ type:'Feature', geometry:{ type:'Polygon', coordinates:[[ [minLng,minLat],[maxLng,minLat],[maxLng,maxLat],[minLng,maxLat],[minLng,minLat] ]] }, properties:{} }]
+  };
+}
+
+function emptyFC() { return { type:'FeatureCollection', features:[] }; }
+
+function addFenceFromPixels(a, b) {
+  const ll1 = pixToLngLat(a), ll2 = pixToLngLat(b);
+  const minLng = Math.min(ll1.lng,ll2.lng), maxLng = Math.max(ll1.lng,ll2.lng);
+  const minLat = Math.min(ll1.lat,ll2.lat), maxLat = Math.max(ll1.lat,ll2.lat);
+
+  fenceCount++;
+  const id    = 'fence-' + fenceCount;
+  const color = COLORS[(fenceCount-1) % COLORS.length];
+  const name  = 'Zona ' + fenceCount;
+  const fence = { id, name, minLng, maxLng, minLat, maxLat, color, inside: false };
+  fences.push(fence);
+
+  map.addSource(id, { type:'geojson', data: rectFeature(minLng,minLat,maxLng,maxLat) });
+  map.addLayer({ id:id+'-fill', type:'fill', source:id, paint:{ 'fill-color':color,'fill-opacity':0.12 } });
+  map.addLayer({ id:id+'-line', type:'line', source:id, paint:{ 'line-color':color,'line-width':2 } });
+
+  const cx = (minLng+maxLng)/2, cy = (minLat+maxLat)/2;
+  map.addSource(id+'-label', { type:'geojson', data:{ type:'FeatureCollection', features:[{ type:'Feature', geometry:{ type:'Point', coordinates:[cx,cy] }, properties:{ name } }] } });
+  map.addLayer({ id:id+'-label', type:'symbol', source:id+'-label', layout:{ 'text-field':['get','name'],'text-size':13,'text-font':['Open Sans Bold','Arial Unicode MS Bold'] }, paint:{ 'text-color':color,'text-halo-color':'#fff','text-halo-width':1.5 } });
+
+  checkFence(fence, currentLngLat[0], currentLngLat[1], false);
+  renderFenceList();
+}
+
+function deleteFence(id) {
+  fences = fences.filter(f => f.id !== id);
+  [id+'-fill',id+'-line',id+'-label'].forEach(l => { if (map.getLayer(l)) map.removeLayer(l); });
+  [id,id+'-label'].forEach(s => { if (map.getSource(s)) map.removeSource(s); });
+  renderFenceList();
+}
+
+function checkFence(fence, lng, lat, alert = true) {
+  const inside = lng >= fence.minLng && lng <= fence.maxLng && lat >= fence.minLat && lat <= fence.maxLat;
+  if (alert && inside !== fence.inside) {
+    showAlert(inside ? `▲ Entraste a ${fence.name}` : `▼ Saliste de ${fence.name}`, inside ? 'enter' : 'exit');
+  }
+  fence.inside = inside;
+  updateFenceItem(fence);
+}
+
+const locationRef = ref(database, "ubicacion");
+onValue(locationRef, (snapshot) => {
+  const data = snapshot.val();
+  if (data && data.latitud && data.longitud && data.timestamp) {
+    const lng = data.longitud, lat = data.latitud;
+    currentLngLat = [lng, lat];
+    marker.setLngLat([lng, lat]);
+    map.flyTo({ center: [lng, lat], speed: 1.2 });
+    latDiv.textContent = lat.toFixed(6);
+    lngDiv.textContent = lng.toFixed(6);
+    horaDiv.textContent = new Date(data.timestamp).toLocaleString("es-BO");
+    fences.forEach(f => checkFence(f, lng, lat));
+  }
+});
+</script>
+</body>
+</html>
